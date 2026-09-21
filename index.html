@@ -115,19 +115,22 @@
   .cta:hover{background:var(--accent-hover);}
   .cta:active{transform:scale(.97);}
 
-  /* ============ VIEWPORT (continuous board) ============ */
+  /* ============ VIEWPORT (continuous board, always edge-to-edge) ============ */
   #viewport{
-    flex:1 1 auto;position:relative;overflow:hidden;
-    background-color:var(--canvas-bg);
+    flex:1 1 auto;position:relative;
+    overflow-y:auto; overflow-x:auto;
+    background-color:var(--paper);
   }
   #stage{
-    position:absolute;top:0;left:50%;
-    transform-origin:top center;will-change:transform;
-    padding:26px 0 90px;
+    position:relative;
+    /* width/height set in JS to exactly match the scaled sheet size —
+       this is what guarantees the scrollable area never exceeds the board */
   }
   #sheet{
-    position:relative;width:1600px;height:2400px;
-    background:var(--paper);border-radius:14px;box-shadow:var(--sh-paper);overflow:hidden;
+    position:absolute; top:0; left:0;
+    width:1600px; height:2400px;
+    transform-origin:top left;
+    background:var(--paper); overflow:hidden;
   }
   #sheet canvas{position:absolute;top:0;left:0;width:100%;height:100%;display:block;}
   #bgCanvas,#drawCanvas{pointer-events:none;}
@@ -160,7 +163,7 @@
 
   /* ============ PROPERTIES PANEL ============ */
   #props{
-    position:absolute;top:18px;left:18px;z-index:45;
+    position:absolute;top:76px;left:18px;z-index:45;
     background:var(--surface);border:1px solid var(--border);
     border-radius:var(--r-lg);box-shadow:var(--sh-3);width:250px;padding:15px 16px;
   }
@@ -312,7 +315,6 @@
     <button class="tool" data-tool="text" data-tip="Text box — T (drag to size)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M8 9.5h8"/><path d="M12 9.5V15"/></svg></button>
     <button class="tool" id="imageBtn" data-tip="Insert image — M"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="8.5" cy="9.5" r="1.4"/><path d="M21 16.5l-5.2-5.2a1.5 1.5 0 0 0-2.1 0L4 21"/></svg></button>
     <button class="tool" data-tool="laser" data-tip="Laser trail — K"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="2.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="8" stroke-dasharray="2.4 3.4"/></svg></button>
-    <button class="tool" data-tool="pan" data-tip="Pan — H or hold Space"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 12.5V6.2a1.4 1.4 0 0 1 2.8 0V11"/><path d="M10.8 11V4.8a1.4 1.4 0 0 1 2.8 0V11"/><path d="M13.6 11V6.4a1.4 1.4 0 0 1 2.8 0V13"/><path d="M16.4 12.6v-1.4a1.4 1.4 0 0 1 2.8 0v4.6a6 6 0 0 1-6 6h-1.6a6 6 0 0 1-4.9-2.6L5 15.8a1.5 1.5 0 0 1 2.4-1.8L8 15"/></svg></button>
 
     <div class="rail-sep"></div>
 
@@ -355,63 +357,59 @@
           <canvas id="overlayCanvas"></canvas>
         </div>
       </div>
-
-      <aside id="props">
-        <div class="prop-head">
-          <span class="ph-icon" id="propIcon"></span>
-          <span><strong id="propTitle">Pen</strong><small id="propSub">Freehand writing</small></span>
-        </div>
-        <div class="prop-block" id="colorBlock">
-          <div class="prop-label"><span>Colour</span></div>
-          <div class="swatches" id="swatches"></div>
-        </div>
-        <div class="prop-block" id="sizeBlock">
-          <div class="prop-label"><span id="sizeLabel">Stroke size</span><span class="val mono" id="sizeVal">6</span></div>
-          <div class="slider-row">
-            <input type="range" id="sizeSlider" min="1" max="26" value="6">
-            <div id="sizeDotWrap"><div id="sizeDot"></div></div>
-          </div>
-        </div>
-        <div class="prop-block" id="fillBlock" style="display:none;">
-          <div class="prop-label"><span>Style</span></div>
-          <div class="seg">
-            <button class="seg-btn active" id="outlineBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="5" width="16" height="14" rx="2"/></svg>Outline</button>
-            <button class="seg-btn" id="fillBtn"><svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="4" y="5" width="16" height="14" rx="2"/></svg>Filled</button>
-          </div>
-        </div>
-        <div class="prop-block" id="fontBlock" style="display:none;">
-          <div class="prop-label"><span>Typeface</span></div>
-          <select class="sel" id="fontFamilySelect">
-            <option value="sans">Inter — Sans</option>
-            <option value="serif">Source Serif — Serif</option>
-            <option value="hand">Caveat — Handwritten</option>
-            <option value="mono">JetBrains Mono</option>
-          </select>
-          <div class="seg" style="margin-top:8px;">
-            <button class="seg-btn" id="boldToggle"><svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M6 4h6.2a3.8 3.8 0 0 1 2.1 6.9A4 4 0 0 1 12.6 19H6V4Zm3 2.7v3.8h3a1.9 1.9 0 0 0 0-3.8H9Zm0 6.4v4.2h3.4a2.1 2.1 0 0 0 0-4.2H9Z"/></svg>Bold</button>
-            <button class="seg-btn" id="italicToggle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="14.5" y1="4.5" x2="9.5" y2="19.5"/><line x1="7" y1="19.5" x2="12" y2="19.5"/><line x1="12" y1="4.5" x2="17" y2="4.5"/></svg>Italic</button>
-          </div>
-          <div class="prop-label" style="margin-top:12px;"><span>Box outline</span></div>
-          <div class="seg">
-            <button class="seg-btn active" id="boxOnBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="5" width="16" height="14" rx="2"/></svg>Show</button>
-            <button class="seg-btn" id="boxOffBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="3 3"><rect x="4" y="5" width="16" height="14" rx="2"/></svg>Hide</button>
-          </div>
-        </div>
-        <div class="prop-hint" id="propHint">Click and drag on the board to write.</div>
-      </aside>
-
-      <div id="boardfoot">
-        <span class="fl">Board height <b id="boardH">2400</b>px</span>
-        <button class="chip" id="extendBtn" data-tip="Add more space at the bottom">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Add space
-        </button>
-        <button class="chip" id="fitBtn" data-tip="Fit board width to screen">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M16 3h3a2 2 0 0 1 2 2v3"/><path d="M21 16v3a2 2 0 0 1-2 2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/></svg>
-          Fit
-        </button>
-      </div>
     </main>
+
+    <aside id="props">
+      <div class="prop-head">
+        <span class="ph-icon" id="propIcon"></span>
+        <span><strong id="propTitle">Pen</strong><small id="propSub">Freehand writing</small></span>
+      </div>
+      <div class="prop-block" id="colorBlock">
+        <div class="prop-label"><span>Colour</span></div>
+        <div class="swatches" id="swatches"></div>
+      </div>
+      <div class="prop-block" id="sizeBlock">
+        <div class="prop-label"><span id="sizeLabel">Stroke size</span><span class="val mono" id="sizeVal">6</span></div>
+        <div class="slider-row">
+          <input type="range" id="sizeSlider" min="1" max="26" value="6">
+          <div id="sizeDotWrap"><div id="sizeDot"></div></div>
+        </div>
+      </div>
+      <div class="prop-block" id="fillBlock" style="display:none;">
+        <div class="prop-label"><span>Style</span></div>
+        <div class="seg">
+          <button class="seg-btn active" id="outlineBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="5" width="16" height="14" rx="2"/></svg>Outline</button>
+          <button class="seg-btn" id="fillBtn"><svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><rect x="4" y="5" width="16" height="14" rx="2"/></svg>Filled</button>
+        </div>
+      </div>
+      <div class="prop-block" id="fontBlock" style="display:none;">
+        <div class="prop-label"><span>Typeface</span></div>
+        <select class="sel" id="fontFamilySelect">
+          <option value="sans">Inter — Sans</option>
+          <option value="serif">Source Serif — Serif</option>
+          <option value="hand">Caveat — Handwritten</option>
+          <option value="mono">JetBrains Mono</option>
+        </select>
+        <div class="seg" style="margin-top:8px;">
+          <button class="seg-btn" id="boldToggle"><svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M6 4h6.2a3.8 3.8 0 0 1 2.1 6.9A4 4 0 0 1 12.6 19H6V4Zm3 2.7v3.8h3a1.9 1.9 0 0 0 0-3.8H9Zm0 6.4v4.2h3.4a2.1 2.1 0 0 0 0-4.2H9Z"/></svg>Bold</button>
+          <button class="seg-btn" id="italicToggle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="14.5" y1="4.5" x2="9.5" y2="19.5"/><line x1="7" y1="19.5" x2="12" y2="19.5"/><line x1="12" y1="4.5" x2="17" y2="4.5"/></svg>Italic</button>
+        </div>
+        <div class="prop-label" style="margin-top:12px;"><span>Box outline</span></div>
+        <div class="seg">
+          <button class="seg-btn active" id="boxOnBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="5" width="16" height="14" rx="2"/></svg>Show</button>
+          <button class="seg-btn" id="boxOffBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="3 3"><rect x="4" y="5" width="16" height="14" rx="2"/></svg>Hide</button>
+        </div>
+      </div>
+      <div class="prop-hint" id="propHint">Click and drag on the board to write.</div>
+    </aside>
+
+    <div id="boardfoot">
+      <span class="fl">Board height <b id="boardH">2400</b>px</span>
+      <button class="chip" id="extendBtn" data-tip="Add more space at the bottom">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add space
+      </button>
+    </div>
   </div>
 
   <div class="popover" id="bgPopover">
@@ -450,10 +448,9 @@
     <div class="row"><span>Laser trail</span><kbd>K</kbd></div>
     <div class="row"><span>Cursor spotlight</span><kbd>X</kbd></div>
     <div class="row"><span>Insert image</span><kbd>M</kbd></div>
-    <div class="row"><span>Pan (hold)</span><kbd>Space</kbd></div>
+    <div class="row"><span>Move around</span><span>scroll / trackpad</span></div>
     <div class="row"><span>Undo / Redo</span><span><kbd>Ctrl+Z</kbd> <kbd>Ctrl+Y</kbd></span></div>
-    <div class="row"><span>Scroll board</span><span>mouse wheel</span></div>
-    <div class="row"><span>Zoom</span><span><kbd>Ctrl</kbd> + scroll</span></div>
+    <div class="row"><span>Zoom in</span><span><kbd>Ctrl</kbd> + scroll</span></div>
   </div>
 
   <input type="file" id="fileInput" accept="image/*">
@@ -507,8 +504,7 @@
     rect:{title:'Rectangle',sub:'Box or frame',hint:'Drag to size the box.'},
     circle:{title:'Circle',sub:'Circle or oval',hint:'Drag to size the shape.'},
     text:{title:'Text box',sub:'Boxed label',hint:'Drag to draw the box, type inside it, then click away to place it.'},
-    laser:{title:'Laser trail',sub:'Temporary marks',hint:'Drag to draw a trail that fades on its own — nothing is saved.'},
-    pan:{title:'Pan',sub:'Move the view',hint:'Drag to move around. Hold Space for this from any tool.'}
+    laser:{title:'Laser trail',sub:'Temporary marks',hint:'Drag to draw a trail that fades on its own — nothing is saved.'}
   };
   const TOOL_ICONS = {
     select:'<path d="M5 3.5 18.5 11l-6 1.6L11 19 5 3.5Z"/>',
@@ -520,8 +516,7 @@
     rect:'<rect x="4" y="6" width="16" height="12" rx="2"/>',
     circle:'<circle cx="12" cy="12" r="8"/>',
     text:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M8 9.5h8"/><path d="M12 9.5V15"/>',
-    laser:'<circle cx="12" cy="12" r="2.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="8" stroke-dasharray="2.4 3.4"/>',
-    pan:'<path d="M8 12.5V6.2a1.4 1.4 0 0 1 2.8 0V11"/><path d="M10.8 11V4.8a1.4 1.4 0 0 1 2.8 0V11"/><path d="M13.6 11V6.4a1.4 1.4 0 0 1 2.8 0V13"/><path d="M16.4 12.6v-1.4a1.4 1.4 0 0 1 2.8 0v4.6a6 6 0 0 1-6 6h-1.6a6 6 0 0 1-4.9-2.6L5 15.8a1.5 1.5 0 0 1 2.4-1.8L8 15"/>'
+    laser:'<circle cx="12" cy="12" r="2.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="8" stroke-dasharray="2.4 3.4"/>'
   };
   const SWATCH_COLORS = ["#0F172A","#FFFFFF","#E11D48","#F97316","#FACC15","#10B981","#06B6D4","#4F46E5","#8B5CF6","#EC4899","#0EA5E9"];
   const GLOW_COLORS = ["#FACC15","#F97316","#06B6D4","#4F46E5","#EC4899"];
@@ -538,7 +533,7 @@
     tool:'pen', color:'#0F172A', fillShape:false,
     fontFamily:'sans', fontSize:32, bold:false, italic:false, showBox:true,
     sizes:{ pen:6, highlighter:24, eraser:30, shape:4, laser:10 },
-    zoom:1, panX:0, panY:0,
+    zoomMul:1,
     bg:'blank',
     undo:[], redo:[],
     glowOn:false, glowColor:'#FACC15', sparkle:true
@@ -563,12 +558,29 @@
   const toastEl=$('toast'), fileInput=$('fileInput'), boardHLabel=$('boardH');
   const modalOverlay=$('modalOverlay'), modalText=$('modalText'), modalConfirm=$('modalConfirm'), modalCancel=$('modalCancel');
 
-  /* ============ Board sizing ============ */
+  /* ============ Board sizing & responsive fit-to-width display ============ */
+  let curScale = 1; // current CSS px per sheet-native px (fit-width * zoom multiplier)
+
   function applyBoardSize(){
     sheet.style.height = BOARD_H+'px';
     [bgCanvas,drawCanvas,overlayCanvas].forEach(c=>{ c.width=BOARD_W*RES; c.height=BOARD_H*RES; });
     boardHLabel.textContent = BOARD_H;
+    applyDisplayScale();
   }
+  function applyDisplayScale(){
+    const fitScale = viewport.clientWidth / BOARD_W;
+    curScale = fitScale * state.zoomMul;
+    sheet.style.transform = `scale(${curScale})`;
+    stage.style.width = (BOARD_W*curScale)+'px';
+    stage.style.height = (BOARD_H*curScale)+'px';
+    zoomLabel.textContent = Math.round(state.zoomMul*100)+'%';
+  }
+  function setZoomMul(z){
+    state.zoomMul = Math.max(1, Math.min(3, z));
+    applyDisplayScale();
+  }
+  window.addEventListener('resize', applyDisplayScale);
+
   const CW = () => BOARD_W*RES;
   const CH = () => BOARD_H*RES;
 
@@ -708,8 +720,8 @@
     const t=state.tool, meta=TOOL_META[t]||{};
     propTitle.textContent=meta.title||''; propSub.textContent=meta.sub||''; propHint.textContent=meta.hint||'';
     propIcon.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">'+(TOOL_ICONS[t]||'')+'</svg>';
-    colorBlock.style.display=(t==='eraser'||t==='pan'||t==='select')?'none':'block';
-    sizeBlock.style.display=(t==='pan'||t==='select')?'none':'block';
+    colorBlock.style.display=(t==='eraser'||t==='select')?'none':'block';
+    sizeBlock.style.display=(t==='select')?'none':'block';
     fillBlock.style.display=(t==='rect'||t==='circle')?'block':'none';
     fontBlock.style.display=(t==='text')?'block':'none';
     const key=sizeKeyFor(t);
@@ -754,7 +766,6 @@
   function updateCursor(){
     const t=state.tool;
     if(t==='select') overlayCanvas.style.cursor='default';
-    else if(t==='pan') overlayCanvas.style.cursor='grab';
     else if(t==='text') overlayCanvas.style.cursor='cell';
     else overlayCanvas.style.cursor='crosshair';
   }
@@ -837,23 +848,13 @@
     if(!bgPopover.contains(e.target)&&!helpPanel.contains(e.target)&&!glowPopover.contains(e.target)) closePopovers();
   });
 
-  /* ============ Zoom / pan ============ */
-  function applyTransform(){
-    stage.style.transform=`translate(calc(-50% + ${state.panX}px), ${state.panY}px) scale(${state.zoom})`;
-    zoomLabel.textContent=Math.round(state.zoom*100)+'%';
-  }
-  function setZoom(z){ state.zoom=Math.max(0.2,Math.min(3,z)); applyTransform(); }
-  $('zoomInBtn').addEventListener('click',()=>setZoom(state.zoom+0.1));
-  $('zoomOutBtn').addEventListener('click',()=>setZoom(state.zoom-0.1));
-  zoomLabel.addEventListener('click',()=>{state.zoom=1;state.panX=0;state.panY=0;applyTransform();});
-  $('fitBtn').addEventListener('click',()=>{
-    const z=Math.min(1,(viewport.clientWidth-80)/BOARD_W);
-    state.zoom=z; state.panX=0; state.panY=0; applyTransform();
-  });
+  /* ============ Zoom (fit-to-width baseline; native scroll handles panning) ============ */
+  $('zoomInBtn').addEventListener('click',()=>setZoomMul(state.zoomMul+0.15));
+  $('zoomOutBtn').addEventListener('click',()=>setZoomMul(state.zoomMul-0.15));
+  zoomLabel.addEventListener('click',()=>setZoomMul(1));
   viewport.addEventListener('wheel',e=>{
-    e.preventDefault();
-    if(e.ctrlKey||e.metaKey) setZoom(state.zoom+(e.deltaY<0?0.08:-0.08));
-    else { state.panX-=e.deltaX; state.panY-=e.deltaY; applyTransform(); }
+    if(e.ctrlKey||e.metaKey){ e.preventDefault(); setZoomMul(state.zoomMul+(e.deltaY<0?0.08:-0.08)); }
+    // plain scroll: let the browser handle native, clamped scrolling — never past the board
   },{passive:false});
 
   /* ============ Object rendering ============ */
@@ -1109,44 +1110,39 @@
   redoBtn.addEventListener('click',redo);
 
   /* ============ Pointer interaction ============ */
-  let isDown=false,lastX=0,lastY=0,shapeStart=null,panStart=null,spaceHeld=false;
+  let isDown=false,lastX=0,lastY=0,shapeStart=null;
   let textStart=null, currentStroke=null, laserPoints=[], laserRAF=null;
   let dragLast=null, dragMoved=false;
   const typing = el => el && (el.tagName==='TEXTAREA'||el.tagName==='INPUT'||el.isContentEditable);
-  const effTool = () => spaceHeld ? 'pan' : state.tool;
 
   function clearOverlay(){ overlayCtx.clearRect(0,0,CW(),CH()); }
 
   window.addEventListener('keydown',e=>{
     if(typing(e.target)){ if(e.key==='Escape') e.target.blur(); return; }
-    if(e.code==='Space'){ spaceHeld=true; overlayCanvas.style.cursor='grab'; e.preventDefault(); return; }
     if(e.ctrlKey||e.metaKey){
       const k=e.key.toLowerCase();
       if(k==='z'){e.preventDefault(); e.shiftKey?redo():undo(); return;}
       if(k==='y'){e.preventDefault(); redo(); return;}
-      if(e.key==='='||e.key==='+'){e.preventDefault(); setZoom(state.zoom+0.1); return;}
-      if(e.key==='-'){e.preventDefault(); setZoom(state.zoom-0.1); return;}
+      if(e.key==='='||e.key==='+'){e.preventDefault(); setZoomMul(state.zoomMul+0.15); return;}
+      if(e.key==='-'){e.preventDefault(); setZoomMul(state.zoomMul-0.15); return;}
       return;
     }
     if((e.key==='Delete'||e.key==='Backspace') && state.tool==='select' && selectedId){ e.preventDefault(); deleteSelected(); return; }
     if(e.key==='Escape' && state.tool==='select' && selectedId){ selectedId=null; selDelHit=null; clearOverlay(); return; }
-    const map={v:'select',p:'pen',g:'highlighter',e:'eraser',t:'text',l:'line',a:'arrow',r:'rect',c:'circle',k:'laser',h:'pan'};
+    const map={v:'select',p:'pen',g:'highlighter',e:'eraser',t:'text',l:'line',a:'arrow',r:'rect',c:'circle',k:'laser'};
     const k=e.key.toLowerCase();
     if(k==='x'){ setGlow(!state.glowOn); return; }
     if(map[k]){ setTool(map[k]); return; }
     if(k==='m'){ fileInput.click(); return; }
     if(e.key==='?'){ helpBtn.click(); return; }
   });
-  window.addEventListener('keyup',e=>{ if(e.code==='Space'){spaceHeld=false;updateCursor();} });
 
   function maybeExtend(y){ if(y > CH() - 400) extendBoard(true); }
 
   overlayCanvas.addEventListener('pointerdown',e=>{
     overlayCanvas.setPointerCapture(e.pointerId);
-    const {x,y}=getXY(e), tool=effTool();
+    const {x,y}=getXY(e), tool=state.tool;
     isDown=true;
-
-    if(tool==='pan'){ panStart={cx:e.clientX,cy:e.clientY,ox:state.panX,oy:state.panY}; overlayCanvas.style.cursor='grabbing'; return; }
 
     if(tool==='select'){
       if(selectedId && selDelHit && dist(x,y,selDelHit.bx,selDelHit.by)<=selDelHit.r+6*RES){
@@ -1184,13 +1180,7 @@
   });
 
   overlayCanvas.addEventListener('pointermove',e=>{
-    const {x,y}=getXY(e), tool=effTool();
-
-    if(isDown&&tool==='pan'){
-      state.panX=panStart.ox+(e.clientX-panStart.cx);
-      state.panY=panStart.oy+(e.clientY-panStart.cy);
-      applyTransform(); return;
-    }
+    const {x,y}=getXY(e), tool=state.tool;
 
     if(isDown&&tool==='select'&&selectedId){
       if(!dragMoved){ pushUndo(); dragMoved=true; }
@@ -1264,9 +1254,7 @@
   function endStroke(e){
     if(!isDown) return;
     isDown=false;
-    const tool=effTool();
-
-    if(tool==='pan'){ panStart=null; overlayCanvas.style.cursor='grab'; return; }
+    const tool=state.tool;
 
     if(tool==='select'){
       if(dragMoved && selectedId){
@@ -1394,7 +1382,7 @@
         let w=img.width,h=img.height;
         const sc=Math.min(CW()*0.5/w, 700*RES/h, 1);
         w*=sc; h*=sc;
-        const vy = (-state.panY + viewport.clientHeight/2)/state.zoom*RES;
+        const vy = (viewport.scrollTop + viewport.clientHeight/2) / curScale * RES;
         const y = Math.max(40, Math.min(CH()-h-40, vy-h/2));
         const x = (CW()-w)/2;
         pushUndo();
@@ -1439,7 +1427,6 @@
   applyGlowColor();
   setTool('pen');
   renderBackground();
-  applyTransform();
   refreshUR();
   setTimeout(()=>toast('Press ? anytime for shortcuts — press V to select & drag anything'),700);
 })();
